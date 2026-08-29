@@ -1,0 +1,476 @@
+:root {
+    --primary: #00d4ff;
+    --secondary: #ff006e;
+    --success: #00ff88;
+    --error: #ff4444;
+    --bg-dark: #0a0e27;
+    --bg-card: #1a1f3a;
+    --text-light: #e0e0e0;
+    --text-dim: #a0a0a0;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, var(--bg-dark) 0%, #1a0033 100%);
+    color: var(--text-light);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+}
+
+.container {
+    width: 100%;
+    max-width: 600px;
+    position: relative;
+}
+
+.screen {
+    display: none;
+    animation: fadeIn 0.3s ease-in;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.screen.active {
+    display: flex;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Меню */
+.menu-content {
+    text-align: center;
+}
+
+.title {
+    font-size: 3.5rem;
+    margin-bottom: 10px;
+    background: linear-gradient(45deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.subtitle {
+    font-size: 1.2rem;
+    color: var(--text-dim);
+    margin-bottom: 40px;
+}
+
+.menu-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* Кнопки */
+.btn {
+    padding: 15px 30px;
+    border: 2px solid;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.btn-primary {
+    background: linear-gradient(45deg, var(--primary), var(--secondary));
+    color: var(--bg-dark);
+    border-color: var(--primary);
+}
+
+.btn-primary:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+}
+
+.btn-secondary {
+    background: transparent;
+    color: var(--primary);
+    border-color: var(--primary);
+}
+
+.btn-secondary:hover {
+    background: rgba(0, 212, 255, 0.1);
+}
+
+.btn-submit {
+    background: var(--success);
+    color: var(--bg-dark);
+    border-color: var(--success);
+}
+
+.btn-submit:hover {
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+}
+
+/* Настройки */
+.settings-content {
+    background: var(--bg-card);
+    padding: 30px;
+    border-radius: 15px;
+    width: 100%;
+    border: 2px solid var(--primary);
+}
+
+.settings-content h2 {
+    text-align: center;
+    margin-bottom: 30px;
+    color: var(--primary);
+}
+
+.setting-group {
+    margin-bottom: 25px;
+}
+
+.setting-group label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: bold;
+    color: var(--primary);
+}
+
+.option-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-left: 10px;
+}
+
+.option-group label {
+    display: flex;
+    align-items: center;
+    font-weight: normal;
+    color: var(--text-light);
+    cursor: pointer;
+}
+
+.option-group input[type="radio"] {
+    margin-right: 10px;
+    cursor: pointer;
+}
+
+.button-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 30px;
+}
+
+/* Игровой экран */
+.game-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: rgba(10, 14, 39, 0.95);
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid var(--primary);
+    z-index: 100;
+}
+
+.timer {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: var(--primary);
+    min-width: 60px;
+}
+
+.score-display {
+    display: flex;
+    gap: 15px;
+    font-size: 1rem;
+    font-weight: bold;
+}
+
+.correct {
+    color: var(--success);
+}
+
+.wrong {
+    color: var(--error);
+}
+
+.progress-bar {
+    width: 100px;
+    height: 8px;
+    background: var(--bg-card);
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--primary);
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--success), var(--primary));
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.game-content {
+    margin-top: 120px;
+    padding: 20px;
+}
+
+.question-block {
+    background: var(--bg-card);
+    padding: 30px;
+    border-radius: 15px;
+    border: 2px solid var(--primary);
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.question {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: var(--primary);
+}
+
+.answers-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.answer-btn {
+    padding: 20px;
+    background: var(--bg-card);
+    border: 2px solid var(--primary);
+    border-radius: 10px;
+    color: var(--text-light);
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.answer-btn:hover {
+    background: rgba(0, 212, 255, 0.1);
+    transform: scale(1.05);
+}
+
+.answer-btn.correct {
+    background: var(--success);
+    color: var(--bg-dark);
+    border-color: var(--success);
+}
+
+.answer-btn.wrong {
+    background: var(--error);
+    color: white;
+    border-color: var(--error);
+}
+
+.input-block {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+input[type="number"] {
+    flex: 1;
+    padding: 15px;
+    background: var(--bg-card);
+    border: 2px solid var(--primary);
+    border-radius: 8px;
+    color: var(--text-light);
+    font-size: 1.1rem;
+    text-align: center;
+}
+
+input[type="number"]:focus {
+    outline: none;
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+}
+
+input[type="number"]::placeholder {
+    color: var(--text-dim);
+}
+
+/* Результаты */
+.results-content {
+    background: var(--bg-card);
+    padding: 30px;
+    border-radius: 15px;
+    border: 2px solid var(--primary);
+    width: 100%;
+    text-align: center;
+}
+
+#resultTitle {
+    color: var(--primary);
+    margin-bottom: 20px;
+}
+
+.stars {
+    font-size: 3rem;
+    margin: 20px 0;
+    letter-spacing: 5px;
+}
+
+.result-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin: 25px 0;
+    background: rgba(0, 212, 255, 0.05);
+    padding: 20px;
+    border-radius: 10px;
+}
+
+.stat {
+    display: flex;
+    justify-content: space-between;
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+.stat .label {
+    color: var(--text-dim);
+}
+
+.stat .value {
+    color: var(--primary);
+}
+
+.mistakes-review {
+    background: rgba(255, 68, 68, 0.1);
+    padding: 15px;
+    border-radius: 8px;
+    margin: 20px 0;
+    text-align: left;
+    border-left: 3px solid var(--error);
+}
+
+.mistake-item {
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 68, 68, 0.3);
+    font-size: 0.95rem;
+}
+
+.mistake-item:last-child {
+    border-bottom: none;
+}
+
+/* Рекорды */
+.records-content {
+    background: var(--bg-card);
+    padding: 30px;
+    border-radius: 15px;
+    border: 2px solid var(--primary);
+    width: 100%;
+}
+
+.records-content h2 {
+    color: var(--primary);
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.records-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.record-item {
+    background: rgba(0, 212, 255, 0.05);
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 3px solid var(--primary);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.record-name {
+    color: var(--text-light);
+}
+
+.record-score {
+    color: var(--primary);
+    font-weight: bold;
+}
+
+/* Конфетти */
+#confetti {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 999;
+}
+
+.confetti-piece {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: var(--primary);
+    animation: confetti-fall 2s linear forwards;
+}
+
+@keyframes confetti-fall {
+    to {
+        transform: translateY(100vh) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+/* Мобильная адаптация */
+@media (max-width: 600px) {
+    .title {
+        font-size: 2.5rem;
+    }
+
+    .question {
+        font-size: 2rem;
+    }
+
+    .game-header {
+        padding: 10px;
+        gap: 10px;
+    }
+
+    .timer {
+        font-size: 1.5rem;
+    }
+
+    .game-content {
+        margin-top: 100px;
+        padding: 10px;
+    }
+
+    .answers-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .progress-bar {
+        display: none;
+    }
+}

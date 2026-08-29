@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MathTron — Кибер-тренажёр математики</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Главное меню -->
+        <div id="menuScreen" class="screen active">
+            <div class="menu-content">
+                <h1 class="title">🎮 MathTron</h1>
+                <p class="subtitle">Кибер-тренажёр для 5 класса</p>
+                
+                <div class="menu-buttons">
+                    <button class="btn btn-primary" onclick="goToGame()">Начать игру</button>
+                    <button class="btn btn-secondary" onclick="showRecords()">Рекорды</button>
+                    <button class="btn btn-secondary" onclick="showSettings()">Настройки</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Настройки сложности и типа операций -->
+        <div id="settingsScreen" class="screen">
+            <div class="settings-content">
+                <h2>Настройки игры</h2>
+                
+                <div class="setting-group">
+                    <label>Операция:</label>
+                    <div class="option-group">
+                        <label><input type="radio" name="operation" value="add" checked> ➕ Сложение</label>
+                        <label><input type="radio" name="operation" value="subtract"> ➖ Вычитание</label>
+                        <label><input type="radio" name="operation" value="multiply"> ✖️ Умножение</label>
+                        <label><input type="radio" name="operation" value="divide"> ➗ Деление</label>
+                        <label><input type="radio" name="operation" value="mixed"> 🎲 Смешанный режим</label>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <label>Сложность:</label>
+                    <div class="option-group">
+                        <label><input type="radio" name="difficulty" value="easy" checked> 🟢 Лёгкий (до 50)</label>
+                        <label><input type="radio" name="difficulty" value="medium"> 🟡 Средний (до 100)</label>
+                        <label><input type="radio" name="difficulty" value="hard"> 🔴 Сложный (до 200)</label>
+                        <label><input type="radio" name="difficulty" value="mega"> ⚫ Мегасложный (до 500)</label>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <label>Числа:</label>
+                    <div class="option-group">
+                        <label><input type="radio" name="numberType" value="single" checked> Однозначные</label>
+                        <label><input type="radio" name="numberType" value="mixed"> Однозначные на двузначные</label>
+                        <label><input type="radio" name="numberType" value="double"> Двузначные</label>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="startGame()">Играть</button>
+                    <button class="btn btn-secondary" onclick="backToMenu()">Назад</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Игровой экран -->
+        <div id="gameScreen" class="screen">
+            <div class="game-header">
+                <div class="timer" id="timer">60</div>
+                <div class="score-display">
+                    <span class="correct" id="correct">✅ 0</span>
+                    <span class="wrong" id="wrong">❌ 0</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </div>
+
+            <div class="game-content">
+                <div class="question-block">
+                    <div id="question" class="question"></div>
+                </div>
+
+                <div class="answers-grid" id="answersGrid"></div>
+
+                <div class="input-block">
+                    <input type="number" id="userAnswer" placeholder="Или введи ответ" onkeypress="handleKeyPress(event)">
+                    <button class="btn btn-submit" onclick="submitAnswer()">Ответить</button>
+                </div>
+
+                <button class="btn btn-secondary" onclick="quitGame()">Выход</button>
+            </div>
+        </div>
+
+        <!-- Экран результатов -->
+        <div id="resultsScreen" class="screen">
+            <div class="results-content">
+                <h2 id="resultTitle">Результат</h2>
+                <div class="stars" id="stars"></div>
+                <div class="result-stats">
+                    <div class="stat">
+                        <span class="label">Правильно:</span>
+                        <span class="value correct" id="resCorrect">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">Ошибок:</span>
+                        <span class="value wrong" id="resWrong">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">Точность:</span>
+                        <span class="value" id="resAccuracy">0%</span>
+                    </div>
+                </div>
+
+                <div id="mistakesReview" class="mistakes-review"></div>
+
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="goToGame()">Ещё раз</button>
+                    <button class="btn btn-secondary" onclick="backToMenu()">Меню</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Экран рекордов -->
+        <div id="recordsScreen" class="screen">
+            <div class="records-content">
+                <h2>Рекорды 🏆</h2>
+                <div id="recordsList" class="records-list"></div>
+                <button class="btn btn-secondary" onclick="backToMenu()">Назад</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Конфетти -->
+    <div id="confetti"></div>
+
+    <script src="game.js"></script>
+</body>
+</html>
