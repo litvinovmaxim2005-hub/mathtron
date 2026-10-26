@@ -5,224 +5,267 @@ let gameState = {
     numberType: 'single',
     correct: 0,
     wrong: 0,
-    timeLeft: 60,
+    elapsed: 0,
+    totalQuestions: QUESTIONS_PER_GAME,
+    questionIndex: 0,
     gameActive: false,
     currentQuestion: null,
     currentAnswers: [],
+    questions: [],
     mistakes: [],
     timerInterval: null,
     sound: true
 };
 
-const DIFFICULTY_LIMITS = {
-    easy: 50,
-    medium: 100,
-    hard: 200,
-    mega: 500
-};
+function formatTime(totalSeconds) {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
 
-// Переход на экран настроек
+function operationLabel(operation) {
+    switch (operation) {
+        case 'add':
+            return 'сложение';
+        case 'subtract':
+            return 'вычитание';
+        case 'multiply':
+            return 'умножение';
+        case 'divide':
+            return 'деление';
+        default:
+            return 'смешанный';
+    }
+}
+
+function difficultyLabel(difficulty) {
+    switch (difficulty) {
+        case 'easy':
+            return 'лёгкий';
+        case 'medium':
+            return 'средний';
+        case 'hard':
+            return 'сложный';
+        case 'mega':
+            return 'мегасложный';
+        default:
+            return difficulty;
+    }
+}
+
 function goToGame() {
     showScreen('settingsScreen');
 }
 
-// Начало игры
 function startGame() {
     gameState.operation = document.querySelector('input[name="operation"]:checked').value;
     gameState.difficulty = document.querySelector('input[name="difficulty"]:checked').value;
     gameState.numberType = document.querySelector('input[name="numberType"]:checked').value;
     gameState.correct = 0;
     gameState.wrong = 0;
-    gameState.timeLeft = 60;
+    gameState.elapsed = 0;
+    gameState.totalQuestions = QUESTIONS_PER_GAME;
+    gameState.questionIndex = 0;
     gameState.gameActive = true;
     gameState.mistakes = [];
+    gameState.questions = generateQuestionSet(
+        QUESTIONS_PER_GAME,
+        gameState.operation,
+        gameState.difficulty,
+        gameState.numberType
+    );
 
     showScreen('gameScreen');
-    nextQuestion();
+    loadQuestion();
     startTimer();
+    updateDisplay();
 }
 
-// Генерация случайного числа в пределах лимита
-function getRandomNumber(max) {
-    return Math.floor(Math.random() * max) + 1;
-}
-
-// Генерация новой задачи
-function nextQuestion() {
-    const limit = DIFFICULTY_LIMITS[gameState.difficulty];
-    let a, b, operation;
-
-    if (gameState.operation === 'mixed') {
-        const ops = ['add', 'subtract', 'multiply', 'divide'];
-        operation = ops[Math.floor(Math.random() * ops.length)];
-    } else {
-        operation = gameState.operation;
-    }
-
-    // Определение размера чисел
-    let maxA = limit;
-    let maxB = limit;
-
-    if (gameState.numberType === 'single') {
-        maxA = 9;
-        maxB = 9;
-    } else if (gameState.numberType === 'mixed') {
-        maxA = Math.random() > 0.5 ? 9 : limit;
-        maxB = Math.random() > 0.5 ? 9 : limit;
-    }
-
-    a = getRandomNumber(maxA);
-    b = getRandomNumber(maxB);
-
-    // Для вычитания и деления убедимся в правильном порядке
-    if (operation === 'subtract' && a < b) {
-        [a, b] = [b, a];
-    }
-
-    if (operation === 'divide') {
-        b = getRandomNumber(Math.min(9, maxB));
-        a = b * getRandomNumber(Math.floor(limit / b));
-    }
-
-    gameState.currentQuestion = { a, b, operation };
-    generateAnswers();
+function loadQuestion() {
+    gameState.currentQuestion = gameState.questions[gameState.questionIndex];
+    generateCurrentAnswers();
     displayQuestion();
 }
 
-// Получение правильного ответа
 function getCorrectAnswer() {
-    const { a, b, operation } = gameState.currentQuestion;
-    switch (operation) {
-        case 'add':
-            return a + b;
-        case 'subtract':
-            return a - b;
-        case 'multiply':
-            return a * b;
-        case 'divide':
-            return Math.floor(a / b);
-        default:
-            return 0;
-    }
+    return gameState.currentQuestion.answer;
 }
 
-// Генерация вариантов ответов
-function generateAnswers() {
-    const correct = getCorrectAnswer();
-    const answers = [correct];
-    const limit = DIFFICULTY_LIMITS[gameState.difficulty];
-
-    while (answers.length < 6) {
-        const wrong = getRandomNumber(limit * 2) - limit / 2;
-        if (!answers.includes(wrong) && wrong !== correct && wrong > 0) {
-            answers.push(wrong);
-        }
-    }
-
-    gameState.currentAnswers = answers.sort(() => Math.random() - 0.5);
+function generateCurrentAnswers() {
+    gameState.currentAnswers = generateAnswers(getCorrectAnswer(), gameState.difficulty);
 }
 
-// Отображение вопроса
+function isFractionQuestion(question) {
+    return Boolean(question && question.answer && typeof question.answer === 'object' && Number.isInteger(question.answer.n));
+}
+
+function formatAnswerForDisplay(value) {
+    if (value && typeof value === 'object' && value.html) {
+        return value.html;
+    }
+    if (value && typeof value === 'object' && Number.isInteger(value.n)) {
+        return typeof formatFracHtml === 'function' ? formatFracHtml(value) : formatMixed(value);
+    }
+    return String(value);
+}
+
+function choicePayload(answer) {
+    if (answer && typeof answer === 'object') {
+        return answer.text || formatMixed(answer.frac || answer);
+    }
+    return answer;
+}
+
 function displayQuestion() {
-    const { a, b, operation } = gameState.currentQuestion;
-    let symbol = '';
-    switch (operation) {
-        case 'add':
-            symbol = '+';
-            break;
-        case 'subtract':
-            symbol = '−';
-            break;
-        case 'multiply':
-            symbol = '×';
-            break;
-        case 'divide':
-            symbol = '÷';
-            break;
+    const question = gameState.currentQuestion;
+    const promptEl = document.getElementById('questionPrompt');
+    promptEl.textContent = question.prompt || '';
+    promptEl.style.display = question.prompt ? 'block' : 'none';
+
+    const questionEl = document.getElementById('question');
+    const text = question.text;
+    if (question.html) {
+        questionEl.innerHTML = question.html;
+    } else {
+        questionEl.textContent = text;
     }
+    questionEl.classList.toggle('question-long', text.length > 22 || question.kind === 'word' || question.kind === 'equation');
 
-    document.getElementById('question').textContent = `${a} ${symbol} ${b}`;
-
-    // Отображение вариантов ответов
     const grid = document.getElementById('answersGrid');
     grid.innerHTML = '';
-    gameState.currentAnswers.forEach(answer => {
+    gameState.currentAnswers.forEach((answer) => {
         const btn = document.createElement('button');
         btn.className = 'btn answer-btn';
-        btn.textContent = answer;
-        btn.onclick = () => checkAnswer(answer);
+        if (answer && typeof answer === 'object' && answer.html) {
+            btn.innerHTML = answer.html;
+        } else {
+            btn.textContent = answer;
+        }
+        btn.onclick = () => checkAnswer(choicePayload(answer));
         grid.appendChild(btn);
     });
-}
 
-// Проверка ответа
-function checkAnswer(answer) {
-    if (!gameState.gameActive) return;
+    const fractionMode = isFractionQuestion(question);
+    document.getElementById('mixedInput').hidden = !fractionMode;
 
-    const correct = getCorrectAnswer();
-    const isCorrect = answer === correct;
+    const hint = document.getElementById('inputHint');
+    hint.textContent = question.hint || (fractionMode
+        ? 'Смешанное число: целая, пробел, дробь. Пример: 7 2/5. Можно 37/5.'
+        : 'Введи целое число и нажми Enter.');
 
-    if (isCorrect) {
-        gameState.correct++;
-        playSound('correct');
-        showFeedback('correct', answer);
-        setTimeout(() => {
-            if (gameState.gameActive) {
-                nextQuestion();
-                updateDisplay();
-            }
-        }, 1000);
+    ['ansWhole', 'ansNum', 'ansDen', 'userAnswer'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.value = '';
+        }
+    });
+    const userAnswer = document.getElementById('userAnswer');
+    userAnswer.placeholder = question.placeholder || (fractionMode ? 'например 7 2/5' : 'Или введи ответ');
+    if (fractionMode) {
+        document.getElementById('ansWhole').focus();
     } else {
-        gameState.wrong++;
-        playSound('wrong');
-        gameState.mistakes.push({
-            question: `${gameState.currentQuestion.a} ${getOperationSymbol()} ${gameState.currentQuestion.b}`,
-            userAnswer: answer,
-            correctAnswer: correct
-        });
-        showFeedback('wrong', correct);
-        setTimeout(() => {
-            if (gameState.gameActive) {
-                displayQuestion();
-                updateDisplay();
-            }
-        }, 5000);
+        userAnswer.focus();
     }
 }
 
-// Ввод ответа с клавиатуры
+function finishCurrentAndContinue() {
+    gameState.questionIndex += 1;
+    if (gameState.questionIndex >= gameState.totalQuestions) {
+        endGame();
+        return;
+    }
+    if (gameState.gameActive) {
+        loadQuestion();
+        updateDisplay();
+    }
+}
+
+function checkAnswer(answer) {
+    if (!gameState.gameActive) {
+        return;
+    }
+
+    const correct = getCorrectAnswer();
+    const isCorrect = typeof answersEqual === 'function'
+        ? answersEqual(answer, correct)
+        : Number(answer) === Number(correct);
+
+    if (isCorrect) {
+        gameState.correct += 1;
+        playSound('correct');
+        showFeedback('correct', answer);
+        updateDisplay();
+        setTimeout(() => {
+            if (gameState.gameActive) {
+                finishCurrentAndContinue();
+            }
+        }, 400);
+    } else {
+        gameState.wrong += 1;
+        playSound('wrong');
+        gameState.mistakes.push({
+            question: gameState.currentQuestion.text,
+            userAnswer: typeof formatMixed === 'function' ? (formatMixed(coerceFrac(answer)) || String(answer)) : String(answer),
+            correctAnswer: gameState.currentQuestion.answerText || (typeof formatMixed === 'function' ? formatMixed(correct) : correct)
+        });
+        showFeedback('wrong', correct);
+        updateDisplay();
+        setTimeout(() => {
+            if (gameState.gameActive) {
+                finishCurrentAndContinue();
+            }
+        }, 1500);
+    }
+}
+
 function handleKeyPress(event) {
     if (event.key === 'Enter') {
         submitAnswer();
     }
 }
 
-// Отправка введённого ответа
+function readMixedFields() {
+    const wholeRaw = document.getElementById('ansWhole').value.trim();
+    const numRaw = document.getElementById('ansNum').value.trim();
+    const denRaw = document.getElementById('ansDen').value.trim();
+    if (!wholeRaw && !numRaw && !denRaw) {
+        return null;
+    }
+    if (numRaw && denRaw) {
+        const whole = wholeRaw === '' ? 0 : parseInt(wholeRaw, 10);
+        const n = parseInt(numRaw, 10);
+        const d = parseInt(denRaw, 10);
+        if ([whole, n, d].some((v) => Number.isNaN(v)) || d === 0) {
+            return null;
+        }
+        return mixedToFrac(whole, n, d);
+    }
+    if (wholeRaw && !numRaw && !denRaw) {
+        const whole = parseInt(wholeRaw, 10);
+        return Number.isNaN(whole) ? null : frac(whole, 1);
+    }
+    return null;
+}
+
 function submitAnswer() {
-    const input = document.getElementById('userAnswer');
-    const answer = parseInt(input.value);
-    input.value = '';
-
-    if (!isNaN(answer)) {
-        checkAnswer(answer);
+    const mixed = readMixedFields();
+    const typed = document.getElementById('userAnswer').value;
+    const parsedText = typed ? parseFractionInput(typed) : null;
+    const answer = mixed || parsedText;
+    if (!answer) {
+        const asInt = parseInt(typed, 10);
+        if (!Number.isNaN(asInt) && String(typed).trim() !== '') {
+            checkAnswer(asInt);
+        }
+        return;
     }
+    document.getElementById('userAnswer').value = '';
+    ['ansWhole', 'ansNum', 'ansDen'].forEach((id) => {
+        document.getElementById(id).value = '';
+    });
+    checkAnswer(answer);
 }
 
-// Получение символа операции
-function getOperationSymbol() {
-    switch (gameState.currentQuestion.operation) {
-        case 'add':
-            return '+';
-        case 'subtract':
-            return '−';
-        case 'multiply':
-            return '×';
-        case 'divide':
-            return '÷';
-    }
-}
-
-// Обратная связь
 function showFeedback(type, value) {
     const question = document.getElementById('question');
     if (type === 'correct') {
@@ -230,88 +273,93 @@ function showFeedback(type, value) {
         createConfetti();
     } else {
         question.style.color = 'var(--error)';
-        question.textContent += ` → Ответ: ${value}`;
+        const shown = gameState.currentQuestion.answerText || formatAnswerForDisplay(value);
+        if (gameState.currentQuestion.html) {
+            question.innerHTML = `${gameState.currentQuestion.html}<span class="op-sign">→</span>${typeof formatFracHtml === 'function' && coerceFrac(value) ? formatFracHtml(coerceFrac(value)) : shown}`;
+        } else {
+            question.textContent = `${gameState.currentQuestion.text} → ${shown}`;
+        }
     }
     setTimeout(() => {
         question.style.color = 'var(--primary)';
-    }, 1500);
+    }, 1400);
 }
 
-// Таймер
 function startTimer() {
+    document.getElementById('timer').textContent = formatTime(gameState.elapsed);
     gameState.timerInterval = setInterval(() => {
-        gameState.timeLeft--;
-        document.getElementById('timer').textContent = gameState.timeLeft;
-
-        if (gameState.timeLeft <= 0) {
-            endGame();
-        }
+        gameState.elapsed += 1;
+        document.getElementById('timer').textContent = formatTime(gameState.elapsed);
     }, 1000);
 }
 
-// Обновление отображения
 function updateDisplay() {
+    const answered = gameState.correct + gameState.wrong;
+    const remaining = Math.max(0, gameState.totalQuestions - answered);
     document.getElementById('correct').textContent = `✅ ${gameState.correct}`;
     document.getElementById('wrong').textContent = `❌ ${gameState.wrong}`;
+    document.getElementById('questionNum').textContent = `${Math.min(answered + 1, gameState.totalQuestions)} / ${gameState.totalQuestions}`;
+    document.getElementById('remaining').textContent = `осталось ${remaining}`;
 
-    const total = gameState.correct + gameState.wrong;
-    const accuracy = total > 0 ? Math.round((gameState.correct / total) * 100) : 0;
     const fill = document.getElementById('progressFill');
-    fill.style.width = accuracy + '%';
-    fill.style.background = accuracy >= 60 
-        ? 'linear-gradient(90deg, var(--success), var(--primary))' 
-        : 'linear-gradient(90deg, var(--error), var(--secondary))';
+    const progress = Math.round((answered / gameState.totalQuestions) * 100);
+    fill.style.width = progress + '%';
 }
 
-// Завершение игры
 function endGame() {
     gameState.gameActive = false;
     clearInterval(gameState.timerInterval);
     showResults();
 }
 
-// Показ результатов
 function showResults() {
     const total = gameState.correct + gameState.wrong;
     const accuracy = total > 0 ? Math.round((gameState.correct / total) * 100) : 0;
     const stars = Math.min(5, Math.ceil(accuracy / 20));
 
-    document.getElementById('resultTitle').textContent = 
+    document.getElementById('resultTitle').textContent =
         accuracy >= 80 ? '🎉 Отлично!' : accuracy >= 60 ? '👍 Хорошо!' : '📚 Повтори!';
-    
+
     document.getElementById('stars').textContent = '⭐'.repeat(stars);
     document.getElementById('resCorrect').textContent = gameState.correct;
     document.getElementById('resWrong').textContent = gameState.wrong;
     document.getElementById('resAccuracy').textContent = accuracy + '%';
+    document.getElementById('resTime').textContent = formatTime(gameState.elapsed);
+    document.getElementById('resTotal').textContent = `${total} / ${gameState.totalQuestions}`;
 
-    // Разбор ошибок
     const mistakesDiv = document.getElementById('mistakesReview');
     if (gameState.mistakes.length > 0) {
         mistakesDiv.innerHTML = '<strong>Ошибки:</strong>';
-        gameState.mistakes.slice(0, 5).forEach(mistake => {
+        gameState.mistakes.slice(0, 12).forEach((mistake) => {
             const item = document.createElement('div');
             item.className = 'mistake-item';
-            item.innerHTML = `${mistake.question} = ${mistake.correctAnswer} (ты ответил: ${mistake.userAnswer})`;
+            item.textContent = `${mistake.question} = ${mistake.correctAnswer} (ты ответил: ${mistake.userAnswer})`;
             mistakesDiv.appendChild(item);
         });
+        if (gameState.mistakes.length > 12) {
+            const more = document.createElement('div');
+            more.className = 'mistake-item';
+            more.textContent = `…и ещё ${gameState.mistakes.length - 12}`;
+            mistakesDiv.appendChild(more);
+        }
     } else {
         mistakesDiv.innerHTML = '';
     }
 
-    // Сохранение рекорда
     saveRecord({
         operation: gameState.operation,
         difficulty: gameState.difficulty,
         correct: gameState.correct,
         wrong: gameState.wrong,
-        accuracy: accuracy,
+        accuracy,
+        total: gameState.totalQuestions,
+        time: gameState.elapsed,
         date: new Date().toLocaleString('ru-RU')
     });
 
     showScreen('resultsScreen');
 }
 
-// Сохранение рекорда в localStorage
 function saveRecord(record) {
     let records = JSON.parse(localStorage.getItem('mathTronRecords') || '[]');
     records.unshift(record);
@@ -319,55 +367,49 @@ function saveRecord(record) {
     localStorage.setItem('mathTronRecords', JSON.stringify(records));
 }
 
-// Показ рекордов
 function showRecords() {
     const records = JSON.parse(localStorage.getItem('mathTronRecords') || '[]');
     const list = document.getElementById('recordsList');
-    
+
     if (records.length === 0) {
         list.innerHTML = '<p style="text-align: center; color: var(--text-dim);">Нет рекордов. Начни игру!</p>';
     } else {
         list.innerHTML = records.map((record, i) => `
             <div class="record-item">
                 <div>
-                    <div class="record-name">Опыт ${i + 1}: ${record.operation} (${record.difficulty})</div>
+                    <div class="record-name">Опыт ${i + 1}: ${operationLabel(record.operation)} (${difficultyLabel(record.difficulty)})</div>
                     <div style="font-size: 0.8rem; color: var(--text-dim);">${record.date}</div>
                 </div>
                 <div>
                     <div class="record-score">✅${record.correct} ❌${record.wrong}</div>
-                    <div style="font-size: 0.8rem; color: var(--primary);">${record.accuracy}%</div>
+                    <div style="font-size: 0.8rem; color: var(--primary);">${record.accuracy}% · ${formatTime(record.time || 0)}</div>
                 </div>
             </div>
         `).join('');
     }
-    
+
     showScreen('recordsScreen');
 }
 
-// Показ настроек
 function showSettings() {
     showScreen('settingsScreen');
 }
 
-// Переключение экранов
 function showScreen(screenId) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
     document.getElementById(screenId).classList.add('active');
 }
 
-// Возврат в меню
 function backToMenu() {
     showScreen('menuScreen');
 }
 
-// Выход из игры
 function quitGame() {
     gameState.gameActive = false;
     clearInterval(gameState.timerInterval);
     showScreen('menuScreen');
 }
 
-// Конфетти
 function createConfetti() {
     const container = document.getElementById('confetti');
     for (let i = 0; i < 20; i++) {
@@ -381,17 +423,18 @@ function createConfetti() {
     }
 }
 
-// Звук
 function playSound(type) {
-    if (!gameState.sound) return;
-    
+    if (!gameState.sound) {
+        return;
+    }
+
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
-    
+
     oscillator.connect(gainNode);
     gainNode.connect(audioContext.destination);
-    
+
     if (type === 'correct') {
         oscillator.frequency.value = 800;
         gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
@@ -407,7 +450,6 @@ function playSound(type) {
     }
 }
 
-// Инициализация
 window.addEventListener('DOMContentLoaded', () => {
     showScreen('menuScreen');
 });
