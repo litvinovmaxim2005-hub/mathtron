@@ -55,10 +55,11 @@
                         <label><input type="radio" name="numberType" value="mixed"> Смешанные (1–3 знака)</label>
                         <label><input type="radio" name="numberType" value="double"> Двузначные</label>
                         <label><input type="radio" name="numberType" value="triple"> Трёхзначные</label>
+                        <label><input type="radio" name="numberType" value="fractions"> Дроби и смешанные числа</label>
                     </div>
                 </div>
 
-                <p class="settings-hint">В раунде 100 примеров. Чем выше сложность, тем длиннее выражения и больше скобок.</p>
+                <p class="settings-hint">В раунде 100 примеров. Для дробей вводи ответ как <strong>7 2/5</strong> или через поля: целая, числитель, знаменатель.</p>
 
                 <div class="button-group">
                     <button class="btn btn-primary" onclick="startGame()">Играть</button>
@@ -87,13 +88,32 @@
 
             <div class="game-content">
                 <div class="question-block">
+                    <div id="questionPrompt" class="question-prompt"></div>
                     <div id="question" class="question"></div>
                 </div>
 
                 <div class="answers-grid" id="answersGrid"></div>
 
-                <div class="input-block">
-                    <input type="number" id="userAnswer" placeholder="Или введи ответ" onkeypress="handleKeyPress(event)">
+                <div class="mixed-input" id="mixedInput" hidden>
+                    <div class="mixed-field">
+                        <input type="text" inputmode="numeric" id="ansWhole" maxlength="4" autocomplete="off" onkeypress="handleKeyPress(event)">
+                        <span class="field-label">целая</span>
+                    </div>
+                    <div class="mixed-field">
+                        <input type="text" inputmode="numeric" id="ansNum" maxlength="4" autocomplete="off" onkeypress="handleKeyPress(event)">
+                        <span class="field-label">числ.</span>
+                    </div>
+                    <span class="frac-slash">/</span>
+                    <div class="mixed-field">
+                        <input type="text" inputmode="numeric" id="ansDen" maxlength="4" autocomplete="off" onkeypress="handleKeyPress(event)">
+                        <span class="field-label">знам.</span>
+                    </div>
+                </div>
+
+                <p class="input-hint" id="inputHint">Введи целое число и нажми Enter.</p>
+
+                <div class="input-block" id="intInputWrap">
+                    <input type="text" inputmode="decimal" id="userAnswer" placeholder="Или введи ответ" autocomplete="off" onkeypress="handleKeyPress(event)">
                     <button class="btn btn-submit" onclick="submitAnswer()">Ответить</button>
                 </div>
 
@@ -152,6 +172,7 @@
     <!-- Конфетти -->
     <div id="confetti"></div>
 
+    <script src="fractions.js"></script>
     <script src="questions.js"></script>
     <script src="game.js"></script>
 </body>

@@ -95,25 +95,77 @@ function generateCurrentAnswers() {
     gameState.currentAnswers = generateAnswers(getCorrectAnswer(), gameState.difficulty);
 }
 
+function isFractionQuestion(question) {
+    return Boolean(question && question.answer && typeof question.answer === 'object' && Number.isInteger(question.answer.n));
+}
+
+function formatAnswerForDisplay(value) {
+    if (value && typeof value === 'object' && value.html) {
+        return value.html;
+    }
+    if (value && typeof value === 'object' && Number.isInteger(value.n)) {
+        return typeof formatFracHtml === 'function' ? formatFracHtml(value) : formatMixed(value);
+    }
+    return String(value);
+}
+
+function choicePayload(answer) {
+    if (answer && typeof answer === 'object') {
+        return answer.text || formatMixed(answer.frac || answer);
+    }
+    return answer;
+}
+
 function displayQuestion() {
+    const question = gameState.currentQuestion;
+    const promptEl = document.getElementById('questionPrompt');
+    promptEl.textContent = question.prompt || '';
+    promptEl.style.display = question.prompt ? 'block' : 'none';
+
     const questionEl = document.getElementById('question');
-    const text = gameState.currentQuestion.text;
-    questionEl.textContent = text;
-    questionEl.classList.toggle('question-long', text.length > 18);
+    const text = question.text;
+    if (question.html) {
+        questionEl.innerHTML = question.html;
+    } else {
+        questionEl.textContent = text;
+    }
+    questionEl.classList.toggle('question-long', text.length > 22 || question.kind === 'word' || question.kind === 'equation');
 
     const grid = document.getElementById('answersGrid');
     grid.innerHTML = '';
     gameState.currentAnswers.forEach((answer) => {
         const btn = document.createElement('button');
         btn.className = 'btn answer-btn';
-        btn.textContent = answer;
-        btn.onclick = () => checkAnswer(answer);
+        if (answer && typeof answer === 'object' && answer.html) {
+            btn.innerHTML = answer.html;
+        } else {
+            btn.textContent = answer;
+        }
+        btn.onclick = () => checkAnswer(choicePayload(answer));
         grid.appendChild(btn);
     });
 
-    const input = document.getElementById('userAnswer');
-    input.value = '';
-    input.focus();
+    const fractionMode = isFractionQuestion(question);
+    document.getElementById('mixedInput').hidden = !fractionMode;
+
+    const hint = document.getElementById('inputHint');
+    hint.textContent = question.hint || (fractionMode
+        ? 'Смешанное число: целая, пробел, дробь. Пример: 7 2/5. Можно 37/5.'
+        : 'Введи целое число и нажми Enter.');
+
+    ['ansWhole', 'ansNum', 'ansDen', 'userAnswer'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.value = '';
+        }
+    });
+    const userAnswer = document.getElementById('userAnswer');
+    userAnswer.placeholder = question.placeholder || (fractionMode ? 'например 7 2/5' : 'Или введи ответ');
+    if (fractionMode) {
+        document.getElementById('ansWhole').focus();
+    } else {
+        userAnswer.focus();
+    }
 }
 
 function finishCurrentAndContinue() {
@@ -134,7 +186,9 @@ function checkAnswer(answer) {
     }
 
     const correct = getCorrectAnswer();
-    const isCorrect = Number(answer) === Number(correct);
+    const isCorrect = typeof answersEqual === 'function'
+        ? answersEqual(answer, correct)
+        : Number(answer) === Number(correct);
 
     if (isCorrect) {
         gameState.correct += 1;
@@ -151,8 +205,8 @@ function checkAnswer(answer) {
         playSound('wrong');
         gameState.mistakes.push({
             question: gameState.currentQuestion.text,
-            userAnswer: answer,
-            correctAnswer: correct
+            userAnswer: typeof formatMixed === 'function' ? (formatMixed(coerceFrac(answer)) || String(answer)) : String(answer),
+            correctAnswer: gameState.currentQuestion.answerText || (typeof formatMixed === 'function' ? formatMixed(correct) : correct)
         });
         showFeedback('wrong', correct);
         updateDisplay();
@@ -170,14 +224,46 @@ function handleKeyPress(event) {
     }
 }
 
-function submitAnswer() {
-    const input = document.getElementById('userAnswer');
-    const answer = parseInt(input.value, 10);
-    input.value = '';
-
-    if (!isNaN(answer)) {
-        checkAnswer(answer);
+function readMixedFields() {
+    const wholeRaw = document.getElementById('ansWhole').value.trim();
+    const numRaw = document.getElementById('ansNum').value.trim();
+    const denRaw = document.getElementById('ansDen').value.trim();
+    if (!wholeRaw && !numRaw && !denRaw) {
+        return null;
     }
+    if (numRaw && denRaw) {
+        const whole = wholeRaw === '' ? 0 : parseInt(wholeRaw, 10);
+        const n = parseInt(numRaw, 10);
+        const d = parseInt(denRaw, 10);
+        if ([whole, n, d].some((v) => Number.isNaN(v)) || d === 0) {
+            return null;
+        }
+        return mixedToFrac(whole, n, d);
+    }
+    if (wholeRaw && !numRaw && !denRaw) {
+        const whole = parseInt(wholeRaw, 10);
+        return Number.isNaN(whole) ? null : frac(whole, 1);
+    }
+    return null;
+}
+
+function submitAnswer() {
+    const mixed = readMixedFields();
+    const typed = document.getElementById('userAnswer').value;
+    const parsedText = typed ? parseFractionInput(typed) : null;
+    const answer = mixed || parsedText;
+    if (!answer) {
+        const asInt = parseInt(typed, 10);
+        if (!Number.isNaN(asInt) && String(typed).trim() !== '') {
+            checkAnswer(asInt);
+        }
+        return;
+    }
+    document.getElementById('userAnswer').value = '';
+    ['ansWhole', 'ansNum', 'ansDen'].forEach((id) => {
+        document.getElementById(id).value = '';
+    });
+    checkAnswer(answer);
 }
 
 function showFeedback(type, value) {
@@ -187,7 +273,12 @@ function showFeedback(type, value) {
         createConfetti();
     } else {
         question.style.color = 'var(--error)';
-        question.textContent = `${gameState.currentQuestion.text} → ${value}`;
+        const shown = gameState.currentQuestion.answerText || formatAnswerForDisplay(value);
+        if (gameState.currentQuestion.html) {
+            question.innerHTML = `${gameState.currentQuestion.html}<span class="op-sign">→</span>${typeof formatFracHtml === 'function' && coerceFrac(value) ? formatFracHtml(coerceFrac(value)) : shown}`;
+        } else {
+            question.textContent = `${gameState.currentQuestion.text} → ${shown}`;
+        }
     }
     setTimeout(() => {
         question.style.color = 'var(--primary)';

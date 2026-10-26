@@ -387,7 +387,32 @@ function buildContext(operation, difficulty, numberType) {
     };
 }
 
+function getFractionGenerator() {
+    if (typeof generateFractionQuestion === 'function') {
+        return generateFractionQuestion;
+    }
+    if (typeof require !== 'undefined') {
+        try {
+            return require('./fractions.js').generateFractionQuestion;
+        } catch (err) {
+            return null;
+        }
+    }
+    return null;
+}
+
 function generateQuestion(operation, difficulty, numberType) {
+    if (numberType === 'fractions') {
+        const gen = getFractionGenerator();
+        if (gen) {
+            for (let attempt = 0; attempt < 40; attempt++) {
+                const question = gen(operation, difficulty);
+                if (question) {
+                    return question;
+                }
+            }
+        }
+    }
     const op = operation === 'mixed' ? 'mixed' : operation;
     for (let attempt = 0; attempt < 40; attempt++) {
         const ctx = buildContext(op, difficulty, numberType);
@@ -418,7 +443,27 @@ function generateQuestionSet(count, operation, difficulty, numberType) {
     return items;
 }
 
+function getFractionChoices() {
+    if (typeof generateFractionChoices === 'function') {
+        return generateFractionChoices;
+    }
+    if (typeof require !== 'undefined') {
+        try {
+            return require('./fractions.js').generateFractionChoices;
+        } catch (err) {
+            return null;
+        }
+    }
+    return null;
+}
+
 function generateAnswers(correct, difficulty) {
+    if (correct && typeof correct === 'object' && Number.isInteger(correct.n) && Number.isInteger(correct.d)) {
+        const makeChoices = getFractionChoices();
+        if (makeChoices) {
+            return makeChoices(correct);
+        }
+    }
     const answers = [correct];
     const max = (DIFFICULTY[difficulty] || DIFFICULTY.easy).max;
     const offsets = [1, -1, 2, -2, 5, -5, 10, -10, 20, -20, 100, -100];
@@ -462,6 +507,7 @@ if (typeof module !== 'undefined' && module.exports) {
         generateQuestionSet,
         generateAnswers,
         evalNode,
-        formatNode
+        formatNode,
+        getFractionGenerator
     };
 }
